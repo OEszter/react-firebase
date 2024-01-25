@@ -1,32 +1,60 @@
-import { collection, getDocs } from "firebase/firestore"
+import { collection, deleteDoc, doc, getDocs, query, where } from "firebase/firestore"
 import { useEffect, useState } from "react"
 import { db } from "../firebase-config"
 
-function Todos() {
+function Todos({ run, setRun, user }) {
 	const [todos, setTodos] = useState(null)
+	
 
 	useEffect(() => {
 		const todosCollection = collection(db, "todos")
+		console.log("fetching todos")
 
-		getDocs(todosCollection)
+		/* getDocs(todosCollection)
 			.then(querySnapshot => {
-				/* const todosDocs = []
-				querySnapshot.docs.forEach(doc => todosDocs.push(doc.data()))
-				console.log(todosDocs) */
-
-				const todosData = querySnapshot.docs.map(doc => doc.data())
+				const todosData = querySnapshot.docs.map(doc => ({
+					...doc.data(),
+					id: doc.id
+				}))
 				setTodos(todosData)
+			}) */
+
+			const q = query(todosCollection, where("user", "==", user.uid))
+			getDocs(q)
+				.then(querySnapshot => {
+					const todosData = querySnapshot.docs.map(doc => ({
+						...doc.data(),
+						id: doc.id
+					}))
+					setTodos(todosData)
+				})
+	}, [run, user])
+
+	const handleDelete = (id) => {
+		const docRef = doc(db, "todos", id)
+
+		deleteDoc(docRef)
+			.then(() => {
+				console.log(id, " has been deleted")
+				setRun(currentState => !currentState)
 			})
-	}, [])
+			.catch((err) => console.log(err))
+	}
 
 	return (
 		<div className="todos">
 			{todos
 				?
-				todos.map((todoData, index) => <p key={index}>{todoData.todo}</p>)
+				todos.map((todoData, index) =>
+					<p key={index}>
+						{todoData.todo}
+						<button onClick={() => handleDelete(todoData.id)}>X</button>
+					</p>
+				)
 				:
 				"loading..."
 			}
+			<button onClick={() => setRun(currentState => !currentState)}>fetch todos</button>
 		</div>
 	)
 }
